@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phill's U7 Team</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red:#CC0000; --red-mid:#990000; --dark:#0f0505; --card:#1a0a0a;
+    --border:#3a1010; --muted:#7a4444; --text:#f5eaea; --accent:#ff3333;
+    --white:#ffffff; --yellow:#ffc800; --green-ok:#00C853;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { background:var(--dark); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; padding-bottom:60px; }
+  body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(204,0,0,0.04) 60px,rgba(204,0,0,0.04) 61px),repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(204,0,0,0.04) 60px,rgba(204,0,0,0.04) 61px); pointer-events:none; z-index:0; }
+  .container { max-width:680px; margin:0 auto; padding:24px 16px; position:relative; z-index:1; }
+
+  /* LOADING OVERLAY */
+  #loading { position:fixed; inset:0; background:var(--dark); z-index:999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; }
+  #loading img { width:72px; height:72px; object-fit:contain; animation:pulse 1.5s ease-in-out infinite; }
+  #loading p { color:var(--muted); font-size:13px; letter-spacing:2px; text-transform:uppercase; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* SYNC INDICATOR */
+  #sync-bar { position:fixed; top:0; left:0; right:0; z-index:100; height:3px; background:var(--red); transform:scaleX(0); transform-origin:left; transition:transform .3s; }
+  #sync-bar.syncing { transform:scaleX(1); }
+
+  /* HEADER */
+  header { margin-bottom:16px; }
+  .header-top { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .header-left { display:flex; align-items:center; gap:14px; }
+  .club-logo { width:64px; height:64px; object-fit:contain; flex-shrink:0; filter:drop-shadow(0 2px 8px rgba(204,0,0,0.5)); }
+  h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(28px,7vw,48px); letter-spacing:3px; line-height:1; color:var(--white); }
+  .subtitle { color:var(--muted); font-size:11px; letter-spacing:2px; text-transform:uppercase; margin-top:4px; }
+  .season-badge { background:var(--card); border:1px solid var(--border); padding:7px 12px; border-radius:6px; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); white-space:nowrap; flex-shrink:0; }
+  .season-badge span { color:var(--accent); font-weight:600; }
+  .header-stripe { height:3px; background:linear-gradient(90deg,var(--red),transparent); border-radius:2px; margin:12px 0 20px; }
+
+  /* LAST UPDATED */
+  #last-updated-bar { text-align:center; font-size:11px; color:var(--muted); letter-spacing:1px; margin-bottom:20px; padding:8px 12px; background:var(--card); border:1px solid var(--border); border-radius:6px; }
+  #last-updated-bar span { color:#ff9999; font-weight:600; }
+
+  /* STATS */
+  .stats-bar { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:28px; }
+  .stat-card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:12px 8px; text-align:center; }
+  .stat-card .num { font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1; }
+  .stat-card .num.played { color:#ffffff; }
+  .stat-card .num.won    { color:#00e676; }
+  .stat-card .num.drawn  { color:var(--yellow); }
+  .stat-card .num.lost   { color:#ff5252; }
+  .stat-card .lbl { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-top:3px; }
+
+  /* SECTION */
+  .section-title { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:2px; color:var(--white); margin-bottom:12px; display:flex; align-items:center; gap:10px; }
+  .pill { background:rgba(204,0,0,0.18); color:var(--accent); font-size:10px; padding:2px 8px; border-radius:20px; letter-spacing:1px; text-transform:uppercase; font-family:'DM Sans',sans-serif; }
+  section { margin-bottom:36px; }
+
+  /* FIXTURE CARDS */
+  .fixture-card { background:var(--card); border:1px solid var(--border); border-left:3px solid var(--red); border-radius:10px; padding:14px; margin-bottom:10px; position:relative; }
+  .fixture-card .fc-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:10px; }
+  .fixture-card .fc-opponent { font-size:15px; font-weight:600; color:var(--white); flex:1; }
+  .fixture-card .fc-meta { font-size:11px; color:var(--muted); margin-top:3px; }
+  .fixture-card .fc-score { text-align:right; flex-shrink:0; cursor:pointer; }
+  .fixture-card .fc-score:active { opacity:.7; }
+  .score-big { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:3px; }
+  .score-big.win  { color:#00e676; }
+  .score-big.loss { color:#ff5252; }
+  .score-big.draw { color:var(--yellow); }
+  .score-big.tbd  { color:var(--muted); }
+  .edit-hint { font-size:10px; color:var(--muted); letter-spacing:1px; margin-top:2px; text-align:right; }
+
+  .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; letter-spacing:1px; text-transform:uppercase; }
+  .win  { background:rgba(0,230,118,0.15); color:#00e676; }
+  .loss { background:rgba(255,82,82,0.18); color:#ff5252; }
+  .draw { background:rgba(255,200,0,0.12); color:var(--yellow); }
+  .tbd  { background:rgba(100,100,100,0.15); color:var(--muted); }
+  .tourn-tag { display:inline-block; background:rgba(204,0,0,0.15); color:#ffaaaa; font-size:10px; padding:2px 7px; border-radius:3px; margin-bottom:4px; }
+
+  /* DUTIES */
+  .duties-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; border-top:1px solid var(--border); padding-top:10px; }
+  .duty-slot { border-radius:6px; padding:7px 8px; cursor:pointer; transition:opacity .15s; }
+  .duty-slot:active { opacity:.7; }
+  .duty-slot .duty-label { font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
+  .duty-slot .duty-name { font-size:12px; font-weight:600; word-break:break-word; }
+  .duty-slot.assigned { background:rgba(204,0,0,0.12); border:1px solid rgba(204,0,0,0.3); }
+  .duty-slot.assigned .duty-label { color:#ff9999; font-weight:600; }
+  .duty-slot.assigned .duty-name  { color:#ffffff; }
+  .duty-slot.unassigned { background:rgba(255,255,255,0.04); border:1px dashed var(--border); }
+  .duty-slot.unassigned .duty-label { color:#7a6666; }
+  .duty-slot.unassigned .duty-name  { color:#6a5555; font-style:italic; }
+  .duty-slot::after { content:'✎'; font-size:9px; float:right; opacity:0.3; margin-top:-1px; }
+
+  /* ADD BTN */
+  .add-btn { width:100%; background:transparent; border:1px dashed var(--border); color:var(--muted); padding:13px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:13px; border-radius:10px; transition:all .2s; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .add-btn:hover, .add-btn:active { color:#ff8888; border-color:var(--red); background:rgba(204,0,0,0.05); }
+
+  /* DUTIES SUMMARY */
+  .summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .summary-card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:12px; }
+  .summary-card .s-label { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:6px; }
+  .summary-card .s-families { font-size:12px; color:#ff8888; line-height:1.5; min-height:18px; }
+  .summary-card .s-gap { font-size:11px; margin-top:5px; }
+  .gap-red { color:var(--accent); } .gap-yellow { color:var(--yellow); } .gap-ok { color:var(--green-ok); }
+
+  /* ROSTER */
+  .roster-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+  .player-card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; align-items:center; gap:10px; cursor:default; transition:border-color .2s; }
+  .player-card:active { border-color:var(--red); }
+  .player-card.empty { border-style:dashed; opacity:.45; cursor:pointer; }
+  .avatar { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--border),#3a0a0a); display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:14px; color:#ff8888; flex-shrink:0; border:1px solid var(--border); }
+  .pname { font-size:13px; font-weight:500; }
+  .ppos { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
+  .ppos span { background:rgba(204,0,0,0.15); color:#ff8888; padding:1px 5px; border-radius:3px; }
+
+  /* NOTES */
+  .notes-box { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; }
+  .notes-box textarea { width:100%; background:transparent; border:none; color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px; line-height:1.7; resize:none; outline:none; min-height:80px; }
+  .notes-box textarea::placeholder { color:var(--muted); }
+
+  /* MODAL */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:200; align-items:flex-end; justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:#1a0a0a; border:1px solid var(--border); border-top:2px solid var(--red); border-radius:16px 16px 0 0; padding:24px 20px 36px; width:100%; max-width:500px; max-height:90vh; overflow-y:auto; }
+  .modal-drag { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 20px; }
+  .modal h3 { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:2px; margin-bottom:16px; color:var(--white); }
+  .modal label { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); display:block; margin-bottom:4px; margin-top:12px; }
+  .modal input, .modal select { width:100%; background:#0f0505; border:1px solid var(--border); border-radius:8px; padding:11px 12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:15px; outline:none; -webkit-appearance:none; appearance:none; }
+  .modal input:focus, .modal select:focus { border-color:var(--red); }
+  .modal select option { background:#0f0505; }
+  .modal-actions { display:flex; gap:10px; margin-top:20px; }
+  .btn-primary { flex:1; background:var(--red); color:#fff; border:none; border-radius:8px; padding:13px; font-family:'DM Sans',sans-serif; font-weight:600; font-size:15px; cursor:pointer; }
+  .btn-secondary { flex:1; background:transparent; color:var(--muted); border:1px solid var(--border); border-radius:8px; padding:13px; font-family:'DM Sans',sans-serif; font-size:15px; cursor:pointer; }
+  .btn-danger { background:rgba(255,82,82,0.15); color:#ff5252; border:1px solid rgba(255,82,82,0.3); border-radius:8px; padding:10px 16px; font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; width:100%; margin-top:10px; }
+
+  footer { border-top:1px solid var(--border); padding-top:16px; color:var(--muted); font-size:11px; letter-spacing:1px; text-align:center; }
+
+  /* TOAST */
+  #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:#1a0a0a; border:1px solid var(--border); border-left:3px solid var(--red); color:var(--text); padding:10px 18px; border-radius:8px; font-size:13px; z-index:500; transition:transform .3s; white-space:nowrap; }
+  #toast.show { transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <img src="https://georgecrossfc.com.au/wp-content/uploads/2019/01/Caroline-Springs_George-Cross-FC.png" alt="Loading">
+  <p>Loading tracker…</p>
+</div>
+
+<!-- Sync bar -->
+<div id="sync-bar"></div>
+<!-- Toast -->
+<div id="toast"></div>
+
+<div class="container">
+
+  <header>
+    <div class="header-top">
+      <div class="header-left">
+        <img class="club-logo" src="https://georgecrossfc.com.au/wp-content/uploads/2019/01/Caroline-Springs_George-Cross-FC.png" alt="George Cross FC" onerror="this.style.display='none'">
+        <div>
+          <h1>PHILL'S U7 TEAM</h1>
+          <div class="subtitle">George Cross FC · Pre-Season Tracker</div>
+        </div>
+      </div>
+      <div class="season-badge">Season <span>2025/26</span></div>
+    </div>
+  </header>
+  <div class="header-stripe"></div>
+
+  <!-- Last Updated -->
+  <div id="last-updated-bar">🕐 Last updated: <span id="last-updated-text">—</span></div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-card"><div class="num played" id="stat-p">0</div><div class="lbl">Played</div></div>
+    <div class="stat-card"><div class="num won"    id="stat-w">0</div><div class="lbl">Won</div></div>
+    <div class="stat-card"><div class="num drawn"  id="stat-d">0</div><div class="lbl">Drawn</div></div>
+    <div class="stat-card"><div class="num lost"   id="stat-l">0</div><div class="lbl">Lost</div></div>
+  </div>
+
+  <!-- Fixtures -->
+  <section>
+    <div class="section-title">Fixtures &amp; Duties <span class="pill">Pre-Season</span></div>
+    <div id="fixtures-list"></div>
+    <button class="add-btn" onclick="openModal('fixture-modal')">
+      <span style="font-size:18px;line-height:1;">+</span> Add Fixture
+    </button>
+  </section>
+
+  <!-- Duties Summary -->
+  <section>
+    <div class="section-title">Duties Summary <span class="pill">At a Glance</span></div>
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="s-label">🍊 Fruits &amp; Lollies</div>
+        <div class="s-families" id="sum-fruits">—</div>
+        <div class="s-gap" id="sum-fruits-gap">—</div>
+      </div>
+      <div class="summary-card">
+        <div class="s-label">🦺 Marshall</div>
+        <div class="s-families" id="sum-marshall">—</div>
+        <div class="s-gap" id="sum-marshall-gap">—</div>
+      </div>
+      <div class="summary-card">
+        <div class="s-label">🏁 Ref</div>
+        <div class="s-families" id="sum-ref">—</div>
+        <div class="s-gap" id="sum-ref-gap">—</div>
+      </div>
+      <div class="summary-card" style="border-color:rgba(0,200,83,0.15);">
+        <div class="s-label" style="color:var(--green-ok);">✅ No Canteen</div>
+        <div class="s-families" style="color:var(--muted);">Removed as requested</div>
+        <div class="s-gap gap-ok">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Roster -->
+  <section>
+    <div class="section-title">Squad Roster <span class="pill" id="roster-count">0 Players</span></div>
+    <div class="roster-grid" id="roster-grid">
+      <div class="player-card empty" onclick="openModal('player-modal')">
+        <div class="avatar" style="color:var(--muted);">+</div>
+        <div><div class="pname" style="color:var(--muted);">Add Player</div><div class="ppos">Tap to add</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Notes -->
+  <section>
+    <div class="section-title">Notes</div>
+    <div class="notes-box">
+      <textarea id="notes-area" placeholder="Pre-season observations, player form, training notes…"></textarea>
+    </div>
+  </section>
+
+  <footer>Season fixtures to be added once schedule is out &nbsp;·&nbsp; 🔴 George Cross FC U7</footer>
+</div>
+
+<!-- EDIT RESULT MODAL -->
+<div class="modal-overlay" id="result-modal">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <h3>Edit Score &amp; Result</h3>
+    <label>Score (e.g. 3-1 or 3:1)</label>
+    <input type="text" id="r-score" placeholder="e.g. 4-2  —  leave blank for TBD">
+    <label>Result</label>
+    <select id="r-result">
+      <option value="tbd">TBD (not played yet)</option>
+      <option value="win">Win</option>
+      <option value="draw">Draw</option>
+      <option value="loss">Loss</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('result-modal')">Cancel</button>
+      <button class="btn-primary" onclick="saveResult()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- DUTY EDIT MODAL -->
+<div class="modal-overlay" id="duty-modal">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <h3 id="duty-modal-title">Edit Duty</h3>
+    <label>Family / Person assigned</label>
+    <input type="text" id="duty-input" placeholder="e.g. Smith's family">
+    <div style="margin-top:10px;">
+      <label style="margin-top:0;display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="duty-clear" style="width:auto;"> Clear (mark as unassigned)
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('duty-modal')">Cancel</button>
+      <button class="btn-primary" onclick="saveDuty()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD FIXTURE MODAL -->
+<div class="modal-overlay" id="fixture-modal">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <h3>Add Fixture</h3>
+    <label>Opponent</label>
+    <input type="text" id="f-opponent" placeholder="Team name">
+    <label>Cup / Tournament (optional)</label>
+    <input type="text" id="f-cup" placeholder="e.g. Youth Super Cup">
+    <label>Date</label>
+    <input type="date" id="f-date">
+    <label>Kick-off</label>
+    <input type="text" id="f-ko" placeholder="e.g. 9:00 AM">
+    <label>Venue</label>
+    <input type="text" id="f-venue" placeholder="CSGC / Paisley Park…">
+    <label>Score (e.g. 3-1) — leave blank if TBD</label>
+    <input type="text" id="f-score" placeholder="3-1">
+    <label>Result</label>
+    <select id="f-result">
+      <option value="tbd">TBD</option>
+      <option value="win">Win</option>
+      <option value="draw">Draw</option>
+      <option value="loss">Loss</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('fixture-modal')">Cancel</button>
+      <button class="btn-primary" onclick="addFixture()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PLAYER MODAL -->
+<div class="modal-overlay" id="player-modal">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <h3>Add Player</h3>
+    <label>Name</label>
+    <input type="text" id="p-name" placeholder="Player name">
+    <label>Shirt Number</label>
+    <input type="number" id="p-number" placeholder="#" min="1" max="99">
+    <label>Position</label>
+    <select id="p-position">
+      <option>GK</option><option>DEF</option><option>MID</option><option>ATT</option><option>FWD</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('player-modal')">Cancel</button>
+      <button class="btn-primary" onclick="addPlayer()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+  // Debug helper — shown on screen if Firebase fails
+  window.onerror = function(msg, src, line) {
+    const l = document.getElementById('loading');
+    l.style.display = 'flex';
+    l.innerHTML = `<p style='color:#ff5252;font-size:13px;text-align:center;padding:20px;line-height:1.8;'>
+      ❌ JS Error:<br><span style='color:#f5eaea;'>${msg}</span><br>
+      <span style='color:#7a4444;font-size:11px;'>Line ${line}</span>
+    </p>
+    <button onclick="this.parentElement.style.display='none'" style='margin-top:8px;background:#CC0000;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer;'>Dismiss</button>`;
+  };
+
+  import { initializeApp }                        from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, push, update, remove, serverTimestamp }
+                                                  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // ── Firebase config ──────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey:            "AIzaSyCcNuFQefTPd5ssKFYOByS4RwsyXieW32A",
+    authDomain:        "phill-u7-soccer.firebaseapp.com",
+    projectId:         "phill-u7-soccer",
+    storageBucket:     "phill-u7-soccer.firebasestorage.app",
+    messagingSenderId: "498467619214",
+    appId:             "1:498467619214:web:fae753c318bed77289e4df",
+    measurementId:     "G-0CG0LZEM89",
+    databaseURL:       "https://phill-u7-soccer-default-rtdb.firebaseio.com"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getDatabase(app);
+
+  // ── State ─────────────────────────────────────────────────────────
+  let fixturesData = {};   // { fbKey: fixtureObj }
+  let playersData  = {};
+  let activeFixtureKey = null;
+  let activeDutyKey    = null;
+  let activeDutyType   = null;
+
+  // ── Helpers ───────────────────────────────────────────────────────
+  function showSync() {
+    const b = document.getElementById('sync-bar');
+    b.classList.add('syncing');
+    setTimeout(()=>b.classList.remove('syncing'), 800);
+  }
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 2500);
+  }
+  function stamp() {
+    return new Date().toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  }
+  function saveLastUpdated() {
+    set(ref(db,'meta/lastUpdated'), stamp());
+  }
+
+  // ── Expose modal fns to global scope ─────────────────────────────
+  window.openModal  = id => document.getElementById(id).classList.add('open');
+  window.closeModal = id => document.getElementById(id).classList.remove('open');
+  document.querySelectorAll('.modal-overlay').forEach(o =>
+    o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); })
+  );
+
+  // ── RENDER FIXTURES ───────────────────────────────────────────────
+  function renderFixtures() {
+    const list = document.getElementById('fixtures-list');
+    list.innerHTML = '';
+    const sorted = Object.entries(fixturesData).sort((a,b)=> (a[1].sortDate||'') > (b[1].sortDate||'') ? 1 : -1);
+    sorted.forEach(([key, f]) => {
+      const labels = {win:'Win',draw:'Draw',loss:'Loss',tbd:'TBD'};
+      const cupHtml = f.cup ? `<span class="tourn-tag">${f.cup}</span>` : '';
+      const fruitsClass   = f.fruits   && f.fruits   !== 'Not assigned' ? 'assigned' : 'unassigned';
+      const marshallClass = f.marshall && f.marshall !== 'Not assigned' ? 'assigned' : 'unassigned';
+      const refClass      = f.ref      && f.ref      !== 'Not assigned' ? 'assigned' : 'unassigned';
+
+      const card = document.createElement('div');
+      card.className = 'fixture-card';
+      card.dataset.key = key;
+      card.innerHTML = `
+        <div class="fc-top">
+          <div>
+            ${cupHtml}
+            <div class="fc-opponent">${f.opponent||'TBD'}</div>
+            <div class="fc-meta">${f.date||'—'} · ${f.ko||'—'} · ${f.venue||'—'}</div>
+          </div>
+          <div class="fc-score" onclick="window.editResult('${key}')">
+            <div class="score-big ${f.result||'tbd'}">${f.score||'—:—'}</div>
+            <div style="text-align:right;margin-top:3px;"><span class="badge ${f.result||'tbd'}">${labels[f.result||'tbd']}</span></div>
+            <div class="edit-hint">✎ tap to edit</div>
+          </div>
+        </div>
+        <div class="duties-row">
+          <div class="duty-slot ${fruitsClass}" onclick="window.editDuty('${key}','fruits')">
+            <div class="duty-label">🍊 Fruits</div>
+            <div class="duty-name">${f.fruits||'Not assigned'}</div>
+          </div>
+          <div class="duty-slot ${marshallClass}" onclick="window.editDuty('${key}','marshall')">
+            <div class="duty-label">🦺 Marshall</div>
+            <div class="duty-name">${f.marshall||'Not assigned'}</div>
+          </div>
+          <div class="duty-slot ${refClass}" onclick="window.editDuty('${key}','ref')">
+            <div class="duty-label">🏁 Ref</div>
+            <div class="duty-name">${f.ref||'Not assigned'}</div>
+          </div>
+        </div>`;
+      list.appendChild(card);
+    });
+    recalcStats();
+    recalcSummary();
+  }
+
+  // ── STATS ─────────────────────────────────────────────────────────
+  function recalcStats() {
+    let w=0,d=0,l=0,p=0;
+    Object.values(fixturesData).forEach(f => {
+      if(f.result==='win')  {w++;p++;}
+      else if(f.result==='draw'){d++;p++;}
+      else if(f.result==='loss'){l++;p++;}
+    });
+    document.getElementById('stat-p').textContent=p;
+    document.getElementById('stat-w').textContent=w;
+    document.getElementById('stat-d').textContent=d;
+    document.getElementById('stat-l').textContent=l;
+  }
+
+  // ── DUTIES SUMMARY ────────────────────────────────────────────────
+  function recalcSummary() {
+    const total = Object.keys(fixturesData).length;
+    ['fruits','marshall','ref'].forEach(type => {
+      const id = type==='fruits'?'fruits':type;
+      const assigned = Object.values(fixturesData).filter(f=>f[type]&&f[type]!=='Not assigned');
+      const names = [...new Set(assigned.map(f=>f[type]))];
+      const elFam = document.getElementById(`sum-${id}`);
+      const elGap = document.getElementById(`sum-${id}-gap`);
+      if(elFam) elFam.innerHTML = names.length ? names.join('<br>') : '<span style="color:var(--muted);font-style:italic;">None yet</span>';
+      if(elGap) {
+        const done = assigned.length;
+        const left = total - done;
+        elGap.textContent = left === 0 ? '✅ All covered!' : `${done} of ${total} covered`;
+        elGap.className = `s-gap ${left===0?'gap-ok':left<=2?'gap-yellow':'gap-red'}`;
+      }
+    });
+  }
+
+  // ── ADD FIXTURE ───────────────────────────────────────────────────
+  window.addFixture = function() {
+    const opp   = document.getElementById('f-opponent').value.trim() || 'TBD';
+    const cup   = document.getElementById('f-cup').value.trim();
+    const date  = document.getElementById('f-date').value;
+    const ko    = document.getElementById('f-ko').value.trim() || '—';
+    const venue = document.getElementById('f-venue').value.trim() || '—';
+    const scoreRaw = document.getElementById('f-score').value.trim();
+    const result   = document.getElementById('f-result').value;
+    const displayDate  = date ? new Date(date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—';
+    const displayScore = scoreRaw ? scoreRaw.replace('-',':') : '—:—';
+
+    const newRef = push(ref(db,'fixtures'));
+    set(newRef, {
+      opponent:opp, cup, date:displayDate, sortDate:date||'9999',
+      ko, venue, score:displayScore, result,
+      fruits:'Not assigned', marshall:'Not assigned', ref:'Not assigned'
+    });
+    ['f-opponent','f-cup','f-date','f-ko','f-venue','f-score'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('f-result').value='tbd';
+    window.closeModal('fixture-modal');
+    saveLastUpdated();
+    showToast('✅ Fixture added!');
+  };
+
+  // ── EDIT RESULT ───────────────────────────────────────────────────
+  window.editResult = function(key) {
+    activeFixtureKey = key;
+    const f = fixturesData[key];
+    document.getElementById('r-score').value  = f.score !== '—:—' ? f.score : '';
+    document.getElementById('r-result').value = f.result || 'tbd';
+    window.openModal('result-modal');
+  };
+  window.saveResult = function() {
+    if(!activeFixtureKey) return;
+    const raw    = document.getElementById('r-score').value.trim();
+    const result = document.getElementById('r-result').value;
+    const score  = raw ? raw.replace('-',':') : '—:—';
+    update(ref(db,`fixtures/${activeFixtureKey}`), {score, result});
+    window.closeModal('result-modal');
+    activeFixtureKey = null;
+    saveLastUpdated();
+    showToast('✅ Result updated!');
+  };
+
+  // ── EDIT DUTY ─────────────────────────────────────────────────────
+  window.editDuty = function(key, type) {
+    activeDutyKey  = key;
+    activeDutyType = type;
+    const labels = {fruits:'Fruits & Lollies', marshall:'Marshall', ref:'Ref'};
+    document.getElementById('duty-modal-title').textContent = `Edit: ${labels[type]}`;
+    const current = fixturesData[key][type] || '';
+    document.getElementById('duty-input').value = current === 'Not assigned' ? '' : current;
+    document.getElementById('duty-clear').checked = false;
+    window.openModal('duty-modal');
+  };
+  window.saveDuty = function() {
+    if(!activeDutyKey) return;
+    const clear = document.getElementById('duty-clear').checked;
+    const val   = document.getElementById('duty-input').value.trim();
+    const newVal = (clear || !val) ? 'Not assigned' : val;
+    update(ref(db,`fixtures/${activeDutyKey}`), {[activeDutyType]: newVal});
+    window.closeModal('duty-modal');
+    activeDutyKey = null;
+    saveLastUpdated();
+    showToast('✅ Duty saved!');
+  };
+
+  // ── ROSTER ────────────────────────────────────────────────────────
+  function renderRoster() {
+    const grid = document.getElementById('roster-grid');
+    grid.innerHTML = '';
+    Object.entries(playersData).forEach(([key, p]) => {
+      const initials = (p.name||'?').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+      const card = document.createElement('div');
+      card.className = 'player-card';
+      card.innerHTML = `
+        <div class="avatar">${p.num||initials}</div>
+        <div>
+          <div class="pname">${p.name}</div>
+          <div class="ppos"><span>${p.pos}</span></div>
+        </div>`;
+      card.addEventListener('click', ()=>{
+        if(confirm(`Remove ${p.name} from roster?`)) {
+          remove(ref(db,`players/${key}`));
+          saveLastUpdated();
+          showToast('Player removed');
+        }
+      });
+      grid.appendChild(card);
+    });
+    const addCard = document.createElement('div');
+    addCard.className='player-card empty';
+    addCard.onclick=()=>window.openModal('player-modal');
+    addCard.innerHTML=`<div class="avatar" style="color:var(--muted);">+</div><div><div class="pname" style="color:var(--muted);">Add Player</div><div class="ppos">Tap to add</div></div>`;
+    grid.appendChild(addCard);
+    document.getElementById('roster-count').textContent=`${Object.keys(playersData).length} Player${Object.keys(playersData).length!==1?'s':''}`;
+  }
+
+  window.addPlayer = function() {
+    const name = document.getElementById('p-name').value.trim();
+    const num  = document.getElementById('p-number').value.trim();
+    const pos  = document.getElementById('p-position').value;
+    if(!name) return;
+    push(ref(db,'players'), {name, num, pos});
+    document.getElementById('p-name').value='';
+    document.getElementById('p-number').value='';
+    window.closeModal('player-modal');
+    saveLastUpdated();
+    showToast('✅ Player added!');
+  };
+
+  // ── NOTES ─────────────────────────────────────────────────────────
+  let notesTimer = null;
+  document.getElementById('notes-area').addEventListener('input', e => {
+    clearTimeout(notesTimer);
+    notesTimer = setTimeout(()=>{
+      set(ref(db,'notes'), e.target.value);
+      saveLastUpdated();
+      showSync();
+    }, 1200);
+  });
+
+  // ── FIREBASE LISTENERS ────────────────────────────────────────────
+  onValue(ref(db,'fixtures'), snap => {
+    fixturesData = snap.val() || {};
+    renderFixtures();
+    showSync();
+  });
+
+  onValue(ref(db,'players'), snap => {
+    playersData = snap.val() || {};
+    renderRoster();
+  });
+
+  onValue(ref(db,'notes'), snap => {
+    const area = document.getElementById('notes-area');
+    const val = snap.val() || '';
+    if(document.activeElement !== area) area.value = val;
+  });
+
+  onValue(ref(db,'meta/lastUpdated'), snap => {
+    const val = snap.val();
+    document.getElementById('last-updated-text').textContent = val || '—';
+  });
+
+  // ── SEED initial data if DB is empty ─────────────────────────────
+  onValue(ref(db,'fixtures'), snap => {
+    if(snap.val()) return;  // already has data — skip
+    const seed = [
+      {opponent:'St Albans Dinamo',      cup:'',                date:'15 Feb', sortDate:'2025-02-15', ko:'9:00 AM',  venue:'CSGC',        score:'13:1', result:'win',  fruits:"Harrison's family", marshall:"Mason's family",  ref:"Aydin's family"},
+      {opponent:'Altona Magic',           cup:'Hobsons Bay Cup', date:'22 Feb', sortDate:'2025-02-22', ko:'9:00 AM',  venue:'Paisley Park', score:'2:5',  result:'loss', fruits:"Angelo's family",   marshall:'Not assigned',   ref:'Not assigned'},
+      {opponent:'Melb Knights-Angelo',    cup:'',                date:'22 Feb', sortDate:'2025-02-22', ko:'9:40 AM',  venue:'Paisley Park', score:'4:3',  result:'win',  fruits:'Not assigned',      marshall:'Not assigned',   ref:'Not assigned'},
+      {opponent:'Altona East Phoenix',    cup:'',                date:'22 Feb', sortDate:'2025-02-22', ko:'10:20 AM', venue:'Paisley Park', score:'4:0',  result:'loss', fruits:'Not assigned',      marshall:'Not assigned',   ref:'Not assigned'},
+      {opponent:'Avondale FC 2',          cup:'Youth Super Cup', date:'28 Feb', sortDate:'2025-02-28', ko:'9:40 AM',  venue:'CSGC',        score:'4:0',  result:'win',  fruits:"Alessio's family",  marshall:'Not assigned',   ref:'Not assigned'},
+      {opponent:'Avondale FC 3',          cup:'Youth Super Cup', date:'28 Feb', sortDate:'2025-02-28', ko:'11:00 AM', venue:'CSGC',        score:'5:0',  result:'win',  fruits:'Not assigned',      marshall:'Not assigned',   ref:'Not assigned'},
+      {opponent:'Avondale FC 1',          cup:'Youth Super Cup', date:'14 Mar', sortDate:'2025-03-14', ko:'9:00 AM',  venue:'CSGC',        score:'—:—',  result:'tbd',  fruits:'Not assigned',      marshall:'Not assigned',   ref:'Not assigned'},
+      {opponent:'St Albans Dinamo White', cup:'Youth Super Cup', date:'14 Mar', sortDate:'2025-03-14', ko:'9:40 AM',  venue:'CSGC',        score:'—:—',  result:'tbd',  fruits:"Cruz's family",     marshall:'Not assigned',   ref:'Not assigned'},
+    ];
+    seed.forEach(f => push(ref(db,'fixtures'), f));
+    saveLastUpdated();
+  }, { onlyOnce: true });
+
+  // ── Hide loading ──────────────────────────────────────────────────
+  // Hide loading — force after 5s with error if stuck
+  let loaded = false;
+  function hideLoading() {
+    loaded = true;
+    document.getElementById('loading').style.display = 'none';
+  }
+  setTimeout(() => {
+    if (!loaded) {
+      document.getElementById('loading').innerHTML = `
+        <img src='https://georgecrossfc.com.au/wp-content/uploads/2019/01/Caroline-Springs_George-Cross-FC.png' style='width:64px;opacity:0.5;'>
+        <p style='color:#ff5252;font-size:13px;text-align:center;padding:0 30px;line-height:1.8;margin-top:8px;'>
+          Could not connect to Firebase.<br>
+          <span style='color:#7a4444;font-size:12px;'>Go to Firebase console:<br>Build → Realtime Database → Create database → Test mode</span>
+        </p>
+        <button onclick="document.getElementById('loading').style.display='none'" style='margin-top:16px;background:#CC0000;color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:14px;cursor:pointer;'>
+          Continue Anyway
+        </button>`;
+    }
+  }, 5000);
+  onValue(ref(db, 'meta'), () => hideLoading(), { onlyOnce: true });
+</script>
+</body>
+</html>
